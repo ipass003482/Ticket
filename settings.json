@@ -1,0 +1,12 @@
+{
+  "emails": [
+    "your_email@example.com"
+  ],
+  "telegram": {
+    "enabled": false,
+    "chatIds": []
+  },
+  "line": {
+    "enabled": false
+  }
+}

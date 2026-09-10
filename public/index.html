@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KKTIX 釋票監控</title>
+    <style>
+      :root {
+        --bg-dark: #050b1a;
+        --panel: rgba(16, 29, 59, 0.54);
+        --panel-border: rgba(120, 165, 255, 0.25);
+        --text: #edf2ff;
+        --text-soft: #bbc5e2;
+        --primary: #5ec3ff;
+        --ok: #28f0aa;
+        --warn: rgba(255, 209, 102, 0.24);
+        --bad: rgba(255, 122, 122, 0.2);
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 0.7;
+        }
+
+        50% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-width: 320px;
+        color: var(--text);
+        font-family: "Noto Sans TC", "Segoe UI", "PingFang TC", Arial, sans-serif;
+        background:
+          radial-gradient(1040px 500px at 12% -18%, #1f4070 0%, transparent 52%),
+          radial-gradient(960px 450px at 85% 5%, #223e70 0%, transparent 45%),
+          linear-gradient(145deg, #030714 0%, #050f25 40%, #04122a 100%);
+        font-size: 18px;
+        line-height: 1.6;
+      }
+
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px 16px 40px;
+        animation: fadeIn 0.7s ease;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .eyebrow {
+        margin: 0 0 6px;
+        color: var(--primary);
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        color: #ffffff;
+        letter-spacing: 0.3px;
+      }
+
+      h1 {
+        font-size: 2.6rem;
+        margin-bottom: 6px;
+        line-height: 1.1;
+        background: linear-gradient(120deg, #ffffff, #aed3ff 48%, #7cc9ff 100%);
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+
+      h2 {
+        font-size: 1.45rem;
+        margin-bottom: 12px;
+      }
+
+      h3 {
+        font-size: 1.24rem;
+      }
+
+      p,
+      .hint,
+      .meta,
+      .muted,
+      .field label {
+        color: var(--text-soft);
+      }
+
+      .subtext {
+        margin: 0 0 14px;
+        max-width: 800px;
+        font-size: 16px;
+      }
+
+      .card {
+        background:
+          linear-gradient(180deg, rgba(11, 22, 46, 0.9), rgba(10, 20, 44, 0.75)),
+          repeating-linear-gradient(
+            135deg,
+            rgba(95, 170, 255, 0.06) 0,
+            rgba(95, 170, 255, 0.06) 3px,
+            transparent 3px,
+            transparent 10px
+          );
+        border: 1px solid var(--panel-border);
+        border-radius: 20px;
+        margin-bottom: 18px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 18px 40px rgba(3, 7, 20, 0.45);
+        animation: fadeIn 0.5s ease;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-top: 12px;
+      }
+
+      .btn {
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: linear-gradient(130deg, #4fc3ff, #3f7eff);
+        color: #fff;
+        padding: 11px 18px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 700;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(68, 130, 255, 0.45);
+      }
+
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      .btn-subtle {
+        background: rgba(11, 26, 53, 0.9);
+        border-color: rgba(126, 175, 255, 0.45);
+      }
+
+      button.delete {
+        background: linear-gradient(130deg, #ff7e7e, #f05b5b);
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--ok);
+        animation: pulse 1.2s infinite;
+        margin-top: 2px;
+        box-shadow: 0 0 14px var(--ok);
+        display: inline-block;
+      }
+
+      .status-list {
+        margin-top: 12px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .event-item,
+      .setting-item {
+        border: 1px solid rgba(126, 175, 255, 0.28);
+        border-radius: 16px;
+        padding: 14px;
+        margin: 0;
+        background: linear-gradient(180deg, rgba(7, 16, 37, 0.82), rgba(8, 15, 33, 0.82));
+        transition: transform 0.2s ease, border-color 0.2s ease;
+      }
+
+      .event-item:hover,
+      .setting-item:hover {
+        transform: translateY(-2px);
+        border-color: rgba(126, 200, 255, 0.5);
+      }
+
+      .event-item-grid-head,
+      .event-item-grid-foot {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .event-item-grid-foot {
+        margin-top: 10px;
+        align-items: end;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        min-width: 112px;
+      }
+
+      .on {
+        color: #c3ffe7;
+        background: rgba(40, 240, 170, 0.16);
+        border: 1px solid rgba(40, 240, 170, 0.5);
+      }
+
+      .off {
+        color: #ffd6d6;
+        background: var(--bad);
+        border: 1px solid rgba(255, 122, 122, 0.45);
+      }
+
+      .meta,
+      .hint,
+      pre {
+        color: var(--text-soft);
+        font-size: 14px;
+      }
+
+      .row {
+        display: grid;
+        gap: 12px;
+      }
+
+      .line {
+        display: grid;
+        grid-template-columns: 2fr 1fr 110px;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .line .wide {
+        grid-column: span 1;
+      }
+
+      .field {
+        margin: 14px 0;
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 10px;
+        color: #fff;
+        font-weight: 700;
+      }
+
+      .field input,
+      .field textarea {
+        width: 100%;
+        background: rgba(5, 13, 31, 0.88);
+        border: 1px solid rgba(123, 164, 255, 0.35);
+        border-radius: 14px;
+        color: var(--text);
+        padding: 13px 14px;
+        font-size: 16px;
+      }
+
+      .field input:hover,
+      .field input:focus,
+      .field textarea:hover,
+      .field textarea:focus {
+        border-color: rgba(146, 196, 255, 0.85);
+        box-shadow: 0 0 0 4px rgba(77, 157, 255, 0.22);
+        outline: none;
+      }
+
+      .muted {
+        color: var(--text-soft);
+      }
+
+      .inline {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .inline label {
+        margin: 0;
+      }
+
+      .event-item a {
+        word-break: break-all;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(130px, 1fr));
+        gap: 12px;
+        margin: 12px 0 6px;
+      }
+
+      .stat {
+        border: 1px solid rgba(126, 169, 255, 0.24);
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(5, 14, 32, 0.7);
+      }
+
+      .stat-label {
+        font-size: 14px;
+        color: var(--text-soft);
+        margin-bottom: 7px;
+      }
+
+      .stat-value {
+        font-size: 29px;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 18px;
+      }
+
+      @media (max-width: 1100px) {
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (max-width: 780px) {
+        .topbar {
+          grid-template-columns: 1fr;
+        }
+
+        .line,
+        .event-item-grid-head,
+        .event-item-grid-foot {
+          grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .toolbar {
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="wrap">
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">Pulse Monitor</p>
+          <h1>KKTIX 釋票監控</h1>
+          <p class="subtext">
+            將監控與通知集中在同一個儀表盤；支援 Email、Telegram、LINE 多渠道同步提醒。
+          </p>
+        </div>
+        <div class="toolbar" style="margin:0;">
+          <button id="checkNow" class="btn">手動立即檢查</button>
+        </div>
+      </div>
+
+      <section class="card">
+        <h2>狀態總覽</h2>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-label">監控活動數</div>
+            <div class="stat-value" id="statTotal">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">目前可買活動</div>
+            <div class="stat-value" id="statAvailable">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">最近更新</div>
+            <div class="stat-sub" id="statLast">--</div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <span class="status-pill"><span class="status-dot"></span><span id="statusLabel" class="meta">初始化中...</span></span>
+        </div>
+        <div id="events" class="status-list"></div>
+      </section>
+
+      <div class="dashboard-grid">
+        <section class="card">
+          <h2>監控活動管理（events.json）</h2>
+          <form id="addEventForm" class="row">
+            <div class="line">
+              <input id="eventName" placeholder="活動名稱（可留空）" />
+              <input id="eventUrl" class="wide" placeholder="https://kktix.com/events/xxxx/registrations/new" />
+              <button type="submit" class="btn btn-subtle">新增</button>
+            </div>
+            <span class="hint">新增後會立即寫入 `events.json`，重啟服務前會自動載入。</span>
+          </form>
+          <div id="eventList" class="status-list"></div>
+        </section>
+
+        <section class="card">
+          <h2>通知設定（可設定寄送 MAIL）</h2>
+          <div class="row">
+            <div class="field">
+              <label for="emailsInput">收件人信箱（可多筆，逗號分隔）</label>
+              <input id="emailsInput" placeholder="a@example.com, b@example.com" />
+            </div>
+            <div class="inline field">
+              <input id="telegramEnabled" type="checkbox" />
+              <label for="telegramEnabled">啟用 Telegram 備援</label>
+              <span id="telegramChatHint" class="hint"></span>
+            </div>
+            <div class="field">
+              <label for="telegramChatIds">Telegram Chat ID（可多筆，逗號分隔）</label>
+              <input id="telegramChatIds" placeholder="1234567890,-987654321" />
+            </div>
+            <div class="inline field">
+              <input id="lineEnabled" type="checkbox" />
+              <label for="lineEnabled">啟用 LINE Notify</label>
+            </div>
+            <div class="toolbar">
+              <button id="saveSettings" class="btn btn-subtle">儲存設定</button>
+              <span id="settingsStatus" class="meta"></span>
+            </div>
+            <span class="hint">環境變數需先設定 Telegram bot token / LINE token，前端僅控制是否啟用。</span>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const eventsEl = document.getElementById("events");
+      const eventListEl = document.getElementById("eventList");
+      const statusLabel = document.getElementById("statusLabel");
+      const statTotal = document.getElementById("statTotal");
+      const statAvailable = document.getElementById("statAvailable");
+      const statLast = document.getElementById("statLast");
+      const settingsStatus = document.getElementById("settingsStatus");
+      const checkNow = document.getElementById("checkNow");
+      const addEventForm = document.getElementById("addEventForm");
+
+      const eventNameInput = document.getElementById("eventName");
+      const eventUrlInput = document.getElementById("eventUrl");
+
+      const emailsInput = document.getElementById("emailsInput");
+      const telegramEnabled = document.getElementById("telegramEnabled");
+      const telegramChatIds = document.getElementById("telegramChatIds");
+      const telegramChatHint = document.getElementById("telegramChatHint");
+      const lineEnabled = document.getElementById("lineEnabled");
+
+      const saveSettingsBtn = document.getElementById("saveSettings");
+
+      function formatTime(v) {
+        if (!v) return "未檢查";
+        return new Date(v).toLocaleString("zh-TW");
+      }
+
+      function renderEvents(events) {
+        if (!events.length) {
+          eventsEl.innerHTML = '<div class="event-item muted">目前沒有監控資料</div>';
+          return;
+        }
+
+        eventsEl.innerHTML = events
+          .map((item) => {
+            return `
+              <div class="event-item">
+                <div class="event-item-grid-head">
+                  <div>
+                    <h3>${item.name}</h3>
+                    <a href="${item.url}" target="_blank">${item.url}</a>
+                  </div>
+                  <span class="pill ${item.available ? "on" : "off"}">${item.available ? "可購票" : "未開放或已售罄"}</span>
+                  <button class="btn delete" onclick="deleteEvent('${item.id}')">移除</button>
+                </div>
+                <div class="event-item-grid-foot">
+                  <pre class="meta">${item.rawHint || ""}</pre>
+                  <span class="meta">上次更新：${formatTime(item.lastCheckedAt)}</span>
+                  ${item.error ? `<span class="meta">錯誤：${item.error}</span>` : ""}
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function renderEventList(events) {
+        if (!events.length) {
+          eventListEl.innerHTML = '<div class="setting-item muted">尚未設定任何活動</div>';
+          return;
+        }
+
+        eventListEl.innerHTML = events
+          .map((evt) => {
+            return `
+              <div class="setting-item">
+                <div class="line">
+                  <div>
+                    <strong>${evt.name}</strong><br/>
+                    <span class="meta">${evt.url}</span>
+                  </div>
+                  <span class="meta">${evt.id}</span>
+                  <button class="btn delete" onclick="deleteEvent('${evt.id}')">刪除</button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      async function loadStatus() {
+        const [statusRes, eventsRes, settingsRes] = await Promise.all([
+          fetch("/api/status"),
+          fetch("/api/events"),
+          fetch("/api/settings"),
+        ]);
+
+        const status = await statusRes.json();
+        const events = await eventsRes.json();
+        const settings = await settingsRes.json();
+        const totalEvents = (status.events || []).length;
+        const availableEvents = (status.events || []).filter((item) => item.available).length;
+
+        renderEvents(status.events || []);
+        renderEventList(events);
+
+        statusLabel.textContent = `最後更新: ${formatTime(status.generatedAt)} / 自動排程: ${status.autoCron} / Mail: ${status.mailReady ? "已啟用" : "未啟用"} / Telegram: ${status.telegramReady ? "已啟用" : "未啟用"} / Line: ${status.lineReady ? "已啟用" : "未啟用"}`;
+        statTotal.textContent = String(totalEvents);
+        statAvailable.textContent = String(availableEvents);
+        statLast.textContent = formatTime(status.generatedAt);
+
+        emailsInput.value = (settings.emails || []).join(", ");
+        telegramEnabled.checked = Boolean(settings.telegramEnabled);
+        telegramChatIds.value = (settings.telegramChatIds || []).join(", ");
+        lineEnabled.checked = Boolean(settings.lineEnabled);
+
+        telegramChatHint.textContent = settings.telegramEnabled
+          ? "(請先到 .env 設定 TELEGRAM_BOT_TOKEN 才會真正送出)"
+          : "(關閉時不發 Telegram)";
+      }
+
+      async function saveSettings() {
+        settingsStatus.textContent = "儲存中...";
+        const payload = {
+          emails: emailsInput.value,
+          telegramEnabled: telegramEnabled.checked,
+          telegramChatIds: telegramChatIds.value,
+          lineEnabled: lineEnabled.checked,
+        };
+
+        const res = await fetch("/api/settings", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          settingsStatus.textContent = "已儲存";
+          await loadStatus();
+        } else {
+          settingsStatus.textContent = "儲存失敗";
+        }
+      }
+
+      async function deleteEvent(id) {
+        if (!confirm("確定要刪除這個監控活動？")) {
+          return;
+        }
+
+        const res = await fetch(`/api/events/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          alert("刪除失敗");
+        }
+        await loadStatus();
+      }
+
+      addEventForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = eventNameInput.value.trim();
+        const url = eventUrlInput.value.trim();
+
+        if (!url) {
+          alert("請輸入活動網址");
+          return;
+        }
+
+        const res = await fetch("/api/events", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name, url }),
+        });
+
+        const result = await res.json();
+        if (!res.ok || !result.ok) {
+          alert(result.message || "新增失敗");
+          return;
+        }
+
+        eventNameInput.value = "";
+        eventUrlInput.value = "";
+        await loadStatus();
+      });
+
+      checkNow.addEventListener("click", async () => {
+        statusLabel.textContent = "手動檢查中...";
+        await fetch("/api/check-now", { method: "POST" });
+        await loadStatus();
+      });
+
+      saveSettingsBtn.addEventListener("click", saveSettings);
+
+      loadStatus();
+      setInterval(loadStatus, 25000);
+    </script>
+  </body>
+</html>
+
+

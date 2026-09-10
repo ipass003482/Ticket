@@ -1,0 +1,20 @@
+{
+  "name": "kktix-ticket-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Monitor specific KKTIX event pages and send email notification when tickets become available.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "cheerio": "^1.0.0",
+    "express": "^4.21.2",
+    "nodemailer": "^6.10.0",
+    "node-cron": "^3.0.3"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}
